@@ -1,0 +1,44 @@
+---
+# CyberMyth OS Calamares branding.
+#
+# Replaces calamares-settings-debian's "debian" component. settings.conf in this
+# tree selects it with "branding: cybermyth"; Debian's own branding directory is
+# left in place but unused, so an upgrade of calamares-settings-debian cannot
+# quietly revert the installer to Debian artwork.
+componentName:   cybermyth
+welcomeStyleCalamares: true
+welcomeExpandingLogo: true
+windowExpanding: normal
+windowSize: 800px,580px
+windowPlacement: center
+strings:
+    productName:         CyberMyth OS
+    shortProductName:    CyberMyth
+    version:             1.0
+    shortVersion:        1.0
+    versionedName:       CyberMyth OS 1.0
+    shortVersionedName:  CyberMyth 1.0
+    # This is what the installed system's GRUB menu entry is called. Debian's
+    # branding says "Debian" here, which would put Debian in the boot menu of
+    # every machine installed from this ISO.
+    bootloaderEntryName: CyberMyth
+    productUrl:          https://cybermyth.dev
+    supportUrl:          https://cybermyth.dev
+    knownIssuesUrl:      https://cybermyth.dev
+    releaseNotesUrl:     https://cybermyth.dev
+    donateUrl:           https://cybermyth.dev
+sidebar: widget
+navigation: widget
+images:
+    productLogo:         "cybermyth-logo.png"
+    productIcon:         "cybermyth-logo.png"
+    productWelcome:      "welcome.png"
+slideshow:               "show.qml"
+style:
+   # Matches the desktop: #0a0d10 ground, #54FFFF cyan accent (the same cyan as
+   # the Tilix profile and the ANSI_COLOR in os-release).
+   SidebarBackground:    "#0a0d10"
+   SidebarText:          "#c8d6da"
+   SidebarTextCurrent:   "#0a0d10"
+   SidebarBackgroundCurrent: "#54FFFF"
+slideshowAPI: 2

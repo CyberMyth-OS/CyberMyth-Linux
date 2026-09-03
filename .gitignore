@@ -1,0 +1,46 @@
+# CyberMyth OS amd64 build tree
+#
+# Everything that defines the build is TRACKED: the scripts, the kernel config
+# and its fragments, branding assets, Calamares overrides, the archive keyring
+# and the docs. Only regenerable outputs are ignored, and every one of them can
+# be rebuilt by a script in this tree.
+#
+# Rough sizes at the time of writing, for context on why each is excluded:
+#   linux-6.18.49/   32 GB    rootfs/  5.9 GB    iso-work/  2.4 GB
+#   *.iso           2.4 GB    pkg/     1.8 GB
+
+# --- Kernel ------------------------------------------------------------------
+# The extracted upstream source tree and the object tree bindeb-pkg leaves in
+# it. Re-extract the upstream tarball and run kernel/build-kernel.sh.
+linux-*/
+kernel/build.log
+# Intermediate configs kept for debugging a config regression. The FINAL config
+# lives at kernel/config-cybermyth-amd64 and IS tracked -- it is the reviewable
+# artefact, and nothing here ignores it.
+kernel/staged/
+
+# --- Packages ----------------------------------------------------------------
+# Kernel .debs (~1.2 GB incl. the -dbg package)  -> kernel/build-kernel.sh
+# tor-browser .deb (133 MB)                      -> pkg/build-tor-browser.sh
+# firmware .debs (307 MB)                        -> pkg/fetch-firmware.sh
+# arch-split firmware .debs                      -> pkg/rearch-firmware.sh
+*.deb
+pkg/
+
+# --- Root filesystem ---------------------------------------------------------
+# sudo ./mk-rootfs.sh   (rootfs.state records which stages completed)
+rootfs/
+rootfs.state
+
+# --- ISO ---------------------------------------------------------------------
+# sudo ./mk-iso.sh
+iso-work/
+*.iso
+*.iso.sha256
+
+# --- Local scratch -----------------------------------------------------------
+.claude/
+CLAUDE.md
+tmp
+*.swp
+*~

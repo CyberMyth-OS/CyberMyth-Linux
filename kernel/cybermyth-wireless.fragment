@@ -1,0 +1,26 @@
+# CyberMyth OS wireless additions -- amd64
+#
+# Derived by diffing kali.config against Debian 13's amd64 config. The delta is
+# NOT a matter of taste: Debian 13 ships a 6.12 kernel and these drivers landed
+# afterwards, so its config simply predates them. Every symbol below was checked
+# to exist in linux-6.18.49.
+#
+# Only the symbols with a Kconfig PROMPT are listed. RTW88_88XXA, RTW88_8812A,
+# RTW88_8814A, RTW88_8821A and RTW89_USB are promptless and get pulled in by
+# "select" from the entries below -- setting them here would be ignored.
+#
+# Prerequisites already satisfied by the Debian base: RTW88_CORE=m, RTW88_USB=m,
+# RTW89_CORE=m, IWLWIFI=m.
+
+# ---- Realtek rtw88 USB: the standard injection/monitor-mode dongles ----
+CONFIG_RTW88_8812AU=m   # RTL8812AU -- Alfa AWUS036ACH, AWUS036AC
+CONFIG_RTW88_8814AU=m   # RTL8814AU -- Alfa AWUS1900
+CONFIG_RTW88_8814AE=m   # RTL8814AE -- PCIe sibling, shares the 8814A core
+CONFIG_RTW88_8821AU=m   # RTL8821AU / RTL8811AU
+
+# ---- Realtek rtw89 USB: Wi-Fi 6 dongles (RTW89_USB is new in 6.18) ----
+CONFIG_RTW89_8851BU=m   # RTL8851BU
+CONFIG_RTW89_8852BU=m   # RTL8852BU
+
+# ---- Intel Wi-Fi 7 ----
+CONFIG_IWLMLD=m         # new MLD opmode for BE200 / Wi-Fi 7 parts

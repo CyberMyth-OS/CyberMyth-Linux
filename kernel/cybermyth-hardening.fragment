@@ -1,0 +1,98 @@
+# CyberMyth OS kernel hardening -- amd64
+#
+# Applied on top of Debian 13's amd64 config, so this file only records what
+# CyberMyth changes. Debian 13 ALREADY sets INIT_ON_ALLOC_DEFAULT_ON,
+# SHUFFLE_PAGE_ALLOCATOR, INIT_STACK_ALL_ZERO, BUG_ON_DATA_CORRUPTION,
+# DEBUG_WX, SECURITY_DMESG_RESTRICT and BPF_UNPRIV_DEFAULT_OFF; those lines are
+# kept anyway so this file states the full intended posture rather than a diff
+# that goes stale when Debian changes its mind.
+#
+# Verified against linux-6.18.49: every symbol below exists in that tree.
+# CONFIG_DEVKMEM was in an earlier revision of this file and has been REMOVED --
+# the symbol was deleted upstream in 5.13, so the line was a silent no-op.
+#
+# HIBERNATION, KEXEC and KEXEC_FILE are deliberately LEFT AT DEBIAN'S DEFAULTS
+# (=y) on amd64. Tails disables all three; this build keeps them so suspend-to-
+# disk and kdump behave the way Debian 13 users expect.
+
+# ---- Heap / slab hardening ----
+CONFIG_INIT_ON_ALLOC_DEFAULT_ON=y   # zero heap on alloc -- kills uninitialized-memory info leaks
+CONFIG_INIT_ON_FREE_DEFAULT_ON=y    # zero memory on free -- defeats use-after-free data reuse (~1-3% cost)
+CONFIG_SLAB_FREELIST_RANDOM=y       # randomize slab freelist order -- breaks heap-spray predictability
+CONFIG_SLAB_FREELIST_HARDENED=y     # obfuscate + sanity-check freelist pointers -- defeats freelist corruption
+CONFIG_RANDOM_KMALLOC_CACHES=y      # per-callsite kmalloc cache split -- harder cross-cache attacks (6.6+)
+CONFIG_SHUFFLE_PAGE_ALLOCATOR=y     # randomize free-page lists -- page-allocation entropy
+
+# ---- Stack / register hardening ----
+CONFIG_STACKPROTECTOR=y             # stack canaries
+CONFIG_STACKPROTECTOR_STRONG=y      # strong canary coverage (most functions)
+CONFIG_VMAP_STACK=y                 # guard-paged virtual kernel stacks -- traps stack overflow
+CONFIG_SCHED_STACK_END_CHECK=y      # detect stack overrun at schedule()
+CONFIG_INIT_STACK_ALL_ZERO=y        # zero-init ALL on-stack vars -- kills uninit-stack leaks (near-free)
+CONFIG_ZERO_CALL_USED_REGS=y        # scrub call-used registers on return -- less ROP/leftover data
+
+# ---- Copy / overflow / corruption ----
+CONFIG_HARDENED_USERCOPY=y          # bounds-check user<->kernel copies vs object sizes
+CONFIG_FORTIFY_SOURCE=y             # compile+runtime overflow checks on mem*/str* with known sizes
+CONFIG_BUG_ON_DATA_CORRUPTION=y     # list/refcount corruption -> hard BUG (fail closed, not continue)
+
+# ---- Kernel memory permissions (W^X) ----
+CONFIG_STRICT_KERNEL_RWX=y          # enforce no-write+exec on kernel text/rodata
+CONFIG_STRICT_MODULE_RWX=y          # same for module memory
+CONFIG_DEBUG_WX=y                   # boot-time warning on any writable+executable mapping
+
+# ---- Address-space randomization ----
+CONFIG_RANDOMIZE_BASE=y             # KASLR -- randomize kernel image base
+CONFIG_RANDOMIZE_MEMORY=y           # randomize physmap / vmalloc / vmemmap base
+
+# ---- Module signing ----
+# SIG_ALL makes modules_install sign every in-tree module with a key the build
+# generates. SIG_FORCE stays OFF and the ISO must NOT boot with
+# module.sig_enforce=1: that would reject every DKMS module (out-of-tree
+# Realtek drivers, VirtualBox, nvidia), which an offsec distro needs to load.
+CONFIG_MODULE_SIG=y
+# CONFIG_MODULE_SIG_FORCE is not set
+CONFIG_MODULE_SIG_ALL=y
+
+# ---- Legacy removal / attack-surface reduction ----
+CONFIG_LEGACY_VSYSCALL_NONE=y       # remove fixed-address vsyscall page (classic ROP target)
+# CONFIG_LEGACY_TIOCSTI is not set
+# CONFIG_LOGO is not set
+CONFIG_SECURITY_DMESG_RESTRICT=y    # dmesg root-only by default (hides kernel pointers)
+CONFIG_BPF_UNPRIV_DEFAULT_OFF=y     # unprivileged eBPF off by default (root eBPF unaffected)
+
+# ---- LSMs: MAC + ptrace + sandbox (NO lockdown) ----
+# lockdown is deliberately absent from CONFIG_LSM. It restricts /dev/mem, raw
+# MSR access and unsigned module loading -- exactly the capabilities pentest
+# tooling depends on. The LSM is still COMPILED IN (Debian's default), it is
+# just not in the activation order, so "lsm=" on the cmdline can re-enable it.
+CONFIG_SECURITY=y
+CONFIG_SECURITY_YAMA=y              # enables ptrace_scope enforcement (value set via sysctl, separate layer)
+CONFIG_SECURITY_APPARMOR=y          # AppArmor MAC -- Tails/Kicksecure default confinement
+CONFIG_SECURITY_LANDLOCK=y          # unprivileged application sandboxing LSM
+CONFIG_LSM="landlock,yama,integrity,apparmor,bpf"   # note: 'lockdown' deliberately absent
+
+# ---- Considered and left OFF (kept as a record of the decision) ----
+# CONFIG_STRICT_DEVMEM=y            # restrict /dev/mem to non-RAM (breaks pentest tools)
+# CONFIG_IO_STRICT_DEVMEM=y
+# CONFIG_PROC_KCORE is not set      # optional, left ON (Debian default)
+# CONFIG_RANDSTRUCT_FULL=y          # randomize sensitive struct layouts. STRONG, but out-of-tree/DKMS
+#                                   #   modules MUST build with the same seed (ships in kernel headers).
+#                                   #   Leave OFF until the DKMS (nexmon) story is settled.
+# CONFIG_UBSAN_BOUNDS=y             # array-bounds checking...
+# CONFIG_UBSAN_TRAP=y               #   ...trap on violation. Size/perf cost; latent bugs become panics.
+# CONFIG_STATIC_USERMODEHELPER=y    # funnel usermode-helper calls; breaks module autoload if misconfigured.
+
+# ---- Netfilter: what anonymity-cli's transparent-Tor killswitch needs ----
+CONFIG_NF_TABLES=y                  # nftables engine
+CONFIG_NF_TABLES_INET=y             # inet family (v4+v6 in one table)
+CONFIG_NFT_NAT=m                    # NAT expression (masquerade downstream)
+CONFIG_NFT_TPROXY=m                 # <-- transparent proxy: redirect to Tor's TransPort
+CONFIG_NFT_REDIR=m                  # redirect expression (DNS -> Tor DNSPort)
+CONFIG_NFT_SOCKET=m                 # socket match (needed by TPROXY rules)
+CONFIG_NFT_CT=m                     # conntrack match/set
+CONFIG_NFT_MASQ=m                   # masquerade
+CONFIG_NF_CONNTRACK=m               # stateful tracking
+CONFIG_NETFILTER_XT_MATCH_OWNER=m   # match by uid (exempt Tor's own uid -- prevents redirect loops)
+CONFIG_NF_NAT=m
+CONFIG_NETFILTER_NETLINK=y

@@ -1,0 +1,14 @@
+# CyberMyth OS kernel identity -- amd64
+#
+# LOCALVERSION_AUTO must stay off: it appends "-dirty"/"-g<sha>" from the git
+# state of the source tree, and the release string must match the module
+# directory and the initramfs name exactly.
+CONFIG_LOCALVERSION="-cybermyth-amd64"
+# CONFIG_LOCALVERSION_AUTO is not set
+CONFIG_DEFAULT_HOSTNAME="cybermyth"
+
+# Keep Debian's BTF so bpftrace / bcc / eBPF CO-RE work out of the box. This
+# forces full DWARF and a slow build; the debug symbols land in a separate
+# linux-image-*-dbg .deb which is simply not put on the ISO.
+CONFIG_DEBUG_INFO=y
+CONFIG_DEBUG_INFO_BTF=y

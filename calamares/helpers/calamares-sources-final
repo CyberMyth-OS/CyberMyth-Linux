@@ -1,0 +1,33 @@
+#!/bin/sh
+#
+# Writes the final sources.list on the INSTALLED system.
+#
+# Replaces calamares-settings-debian's helper of the same name, which is wrong
+# for CyberMyth OS in two ways:
+#   1. it enables trixie-backports -- CyberMyth OS amd64 takes nothing from
+#      backports, and an installed system silently gaining that source would
+#      defeat the policy the live image is built under;
+#   2. it writes only "main non-free-firmware", dropping contrib and non-free,
+#      so packages the live system shipped would have no source to update from.
+#
+# The CyberMyth repository itself lives in /etc/apt/sources.list.d/cybermyth.sources
+# and is copied onto the target by unpackfs, so it is deliberately not rewritten
+# here -- this file owns /etc/apt/sources.list and nothing else.
+
+CHROOT=$(mount | grep proc | grep calamares | awk '{print $3}' | sed -e "s#/proc##g")
+RELEASE="trixie"
+
+cat << SOURCES > "$CHROOT/etc/apt/sources.list"
+# CyberMyth OS -- Debian $RELEASE.
+# NO backports: see /etc/apt/preferences.d/no-backports.
+deb http://deb.debian.org/debian $RELEASE main contrib non-free-firmware non-free
+deb-src http://deb.debian.org/debian $RELEASE main contrib non-free-firmware non-free
+
+deb http://deb.debian.org/debian $RELEASE-updates main contrib non-free-firmware non-free
+deb-src http://deb.debian.org/debian $RELEASE-updates main contrib non-free-firmware non-free
+
+deb http://security.debian.org/debian-security/ $RELEASE-security main contrib non-free-firmware non-free
+deb-src http://security.debian.org/debian-security/ $RELEASE-security main contrib non-free-firmware non-free
+SOURCES
+
+exit 0
