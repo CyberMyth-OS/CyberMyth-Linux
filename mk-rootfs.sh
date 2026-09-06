@@ -893,6 +893,43 @@ if grep -qE '^[[:space:]]*deb(-src)?[[:space:]].*backports' "$ROOTFS$SF"; then
 fi
 note "sources-final helper diverted (no backports on installed systems)"
 
+# --- Every package Calamares removes must actually be installed --------------
+# The packages module runs, literally:
+#     apt-get --purge -q -y remove <names from packages.conf>
+# in the TARGET root. apt resolves an installed package from dpkg's status file
+# and needs no index -- but a name that is neither installed nor in any index is
+# fatal (exit 100, "E: Unable to locate package X"), and Calamares reports it as
+#     "Installation failed after bootloader installation finished."
+#
+# This ISO has no pool/ on the medium and mk-rootfs.sh empties
+# /var/lib/apt/lists, so on a machine with no network during install apt knows
+# ONLY what is installed. calamares-settings-debian's stock list names four
+# packages this image never installs (live-boot-doc, live-config-doc,
+# live-task-localisation, live-task-recommended) and that is exactly how the
+# first ISO failed to install.
+#
+# Checked here, at build time, where it costs nothing.
+step "Verifying Calamares' removal list against what is installed"
+PKGCONF=$ROOTFS/etc/calamares/modules/packages.conf
+[ -f "$PKGCONF" ] || die "no $PKGCONF -- the Calamares overrides did not land"
+rmfail=0
+rmnames=$(sed -nE "s/^[[:space:]]*- '([^']+)'.*/\1/p" "$PKGCONF")
+[ -n "$rmnames" ] || die "could not parse any package names out of packages.conf"
+for rp in $rmnames; do
+    if chroot "$ROOTFS" dpkg-query -W -f='${Status}' "$rp" 2>/dev/null \
+       | grep 'install ok installed' >/dev/null; then
+        note "OK      $rp"
+    else
+        note "NOT INSTALLED  $rp"
+        rmfail=$((rmfail+1))
+    fi
+done
+[ "$rmfail" -eq 0 ] || die "$rmfail package(s) in packages.conf are not installed.
+apt-get remove would exit 100 on them and the INSTALL would fail after the
+bootloader step -- the live session would still boot fine, so this is only
+discovered by actually installing. Remove them from
+calamares/etc/calamares/modules/packages.conf."
+
 # The launcher ships as calamares-install-debian.desktop; rename what the user
 # sees without renaming the file the autostart entry points at.
 DESK=$ROOTFS/usr/share/applications/calamares-install-debian.desktop

@@ -285,6 +285,33 @@ Two Debian-specific behaviours are overridden:
   settings package but leaves the Calamares binary, putting a broken installer
   in the app grid of every installed system.
 
+### Every name in packages.conf must be an installed package
+
+The `packages` module runs, literally, in the target root:
+
+```
+apt-get --purge -q -y remove <every name in packages.conf>
+```
+
+apt resolves an **installed** package from `/var/lib/dpkg/status` and needs no
+index. But a name that is neither installed nor in any index is fatal —
+`E: Unable to locate package X`, exit 100 — and Calamares surfaces it as:
+
+> Installation failed after bootloader installation finished.
+> The package manager could not make changes to the installed system.
+
+`calamares-settings-debian`'s stock list names `live-boot-doc`,
+`live-config-doc`, `live-task-localisation` and `live-task-recommended`.
+Debian's live ISO gets away with that because **its medium carries a full
+`pool/` + `dists/`**, so apt can locate those names even though they are not
+installed. This ISO has no pool, and `mk-rootfs.sh` empties
+`/var/lib/apt/lists`, so on a machine with no network during install apt knows
+only what is installed. All four are removed from our list.
+
+This shipped in the first ISO and is only discoverable by *actually installing* —
+the live session boots and runs perfectly either way. `mk-rootfs.sh` now asserts
+at build time that every name in `packages.conf` is installed in the rootfs.
+
 ### The "Install" menu entry
 
 There is **no** `calamares.autostart` kernel parameter — Debian's autostart entry
